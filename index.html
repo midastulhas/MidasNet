@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -96,28 +97,27 @@
         <div className="grid gap-6 md:grid-cols-2">
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
             <h3 className="text-red-400 font-bold mb-2">Erro: Handshake did not complete</h3>
-            <p className="text-sm text-slate-300 mb-2">Seus IPs estão corretos (192.168.0.56), mas o Windows está bloqueando.</p>
+            <p className="text-sm text-slate-300 mb-2">O sinal não está chegando no servidor.</p>
             
             <div className="bg-red-900/20 p-4 rounded border border-red-500/30 mb-4">
-               <h4 className="text-red-200 font-bold text-sm mb-2 flex items-center gap-2"><Icon name="shieldAlert" size={16}/> Firewall do Windows</h4>
-               <p className="text-xs text-red-100 mb-2">O Windows "Público" bloqueia conexões externas.</p>
-               <ol className="list-decimal pl-4 text-xs text-red-100 space-y-1">
-                  <li>Pesquise no Windows: <strong>"Firewall e proteção de rede"</strong>.</li>
-                  <li>Clique na rede ativa.</li>
-                  <li>Desative o <strong>Microsoft Defender Firewall</strong> (temporário).</li>
-                  <li>Tente conectar novamente.</li>
-               </ol>
+               <h4 className="text-red-200 font-bold text-sm mb-2 flex items-center gap-2"><Icon name="shieldAlert" size={16}/> Windows Firewall</h4>
+               <p className="text-xs text-red-100 mb-2">Se estiver usando Modo Direto, desative o Firewall do Windows.</p>
+            </div>
+            
+             <div className="bg-blue-900/20 p-4 rounded border border-blue-500/30">
+               <h4 className="text-blue-200 font-bold text-sm mb-2 flex items-center gap-2"><Icon name="key" size={16}/> Chave Incorreta</h4>
+               <p className="text-xs text-blue-100 mb-2">Se você não copiou a Public Key do servidor para o App, a conexão falha. Certifique-se de preencher o campo "Validação de Chave".</p>
             </div>
           </div>
           
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
             <h3 className="text-purple-400 font-bold mb-2">Bloqueio de Operadora (Claro/Vivo)</h3>
             <p className="text-sm text-slate-300 mb-4">
-              Se desativar o Firewall não funcionar, sua operadora está usando CGNAT.
+              Se nada funcionar no modo Direto, é CGNAT.
             </p>
             <div className="bg-purple-900/20 p-4 rounded border border-purple-500/30">
-               <h4 className="text-purple-200 font-bold text-sm mb-2">Solução: Nuvem</h4>
-               <p className="text-xs text-purple-100">Use a aba <strong>"VPS Nuvem"</strong> deste aplicativo com Oracle Cloud ou outro VPS. Funciona 100%.</p>
+               <h4 className="text-purple-200 font-bold text-sm mb-2">Solução: VPS Nuvem</h4>
+               <p className="text-xs text-purple-100">O modo Nuvem (Oracle) é imune a bloqueios de operadora.</p>
             </div>
           </div>
         </div>
@@ -138,12 +138,13 @@
       }, [mode]);
 
       const winConf = `[Interface]\nPrivateKey = ${keys.sk}\nAddress = 10.10.0.1/24\nListenPort = 51820\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = ${keys.pk}\nAllowedIPs = 10.10.0.2/32`.trim();
-      const targetPubKey = mode === 'direct' ? manualPubKey : keys.cpk; 
+      const targetPubKey = manualPubKey; 
       const mobConf = `[Interface]\nPrivateKey = ${keys.ck}\nAddress = 10.10.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = ${targetPubKey}\nEndpoint = ${ip}:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25`.trim();
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
 # MANUS.AI - AUTO SETUP (UBUNTU)
+# Works on Ubuntu 20.04 & 22.04 (Ampere/AMD)
 # -----------------------------------------------
 apt update && apt install -y wireguard iptables-persistent
 
@@ -162,7 +163,7 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 
 [Peer]
 # Mobile
-PublicKey = ${keys.cpk}
+PublicKey = ${keys.pk}
 AllowedIPs = 10.10.0.2/32
 EOF
 
@@ -178,7 +179,19 @@ netfilter-persistent save
 
 systemctl enable wg-quick@wg0
 systemctl start wg-quick@wg0
-echo "VPN SUCESSO!"
+
+# CALCULAR E EXIBIR A CHAVE PÚBLICA REAL
+SERVER_PUB_KEY=$(echo "${keys.sk}" | wg pubkey)
+
+echo ""
+echo "========================================================"
+echo "✅ VPN INSTALLED SUCCESSFULLY!"
+echo "========================================================"
+echo "COPIE A CHAVE ABAIXO E COLE NO APP MANUS:"
+echo ""
+echo "$SERVER_PUB_KEY"
+echo ""
+echo "========================================================"
 `.trim();
 
       return (
@@ -193,14 +206,24 @@ echo "VPN SUCESSO!"
 
           {step === 1 && (
             <div className="space-y-4">
-               <p className="text-slate-400 text-sm">{mode==='direct'?'Detectamos seu IP. Garanta que a porta 51820 UDP está aberta no Roteador.':'Crie sua máquina na Oracle (Ubuntu 22.04) e cole o IP Público abaixo:'}</p>
+               <p className="text-slate-400 text-sm">{mode==='direct'?'Detectamos seu IP. Garanta que a porta 51820 UDP está aberta no Roteador.':'Crie sua máquina na Oracle (Ubuntu 20.04 ou 22.04) e cole o IP Público abaixo:'}</p>
                
                {mode === 'cloud' && (
-                 <div className="bg-blue-900/20 p-3 rounded border border-blue-500/30 text-xs text-blue-200 flex gap-2 items-start">
-                    <Icon name="card" size={16} className="shrink-0 mt-0.5" />
-                    <div>
-                      <strong>Aviso Oracle Cloud:</strong> Escolha a imagem <strong>Ubuntu 22.04</strong>. O script é otimizado para ele.
-                    </div>
+                 <div className="space-y-3 mb-4">
+                   <div className="bg-blue-900/20 p-3 rounded border border-blue-500/30 text-xs text-blue-200 flex gap-2 items-start">
+                      <Icon name="card" size={16} className="shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Aviso Oracle Cloud:</strong> Escolha a imagem <strong>Ubuntu 20.04</strong>. O script é otimizado para ele.
+                      </div>
+                   </div>
+                   <div className="bg-red-900/20 p-3 rounded border border-red-500/30 text-xs text-red-200 flex gap-2 items-start">
+                      <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Opção de IP Público Bloqueada?</strong> Crie a Rede primeiro:
+                        <br/>1. Vá no menu Oracle: <strong>Networking {'>'} VCN Wizard {'>'} Create VCN with Internet</strong>.
+                        <br/>2. Depois volte para Criar Instância e selecione "Existing VCN".
+                      </div>
+                   </div>
                  </div>
                )}
 
@@ -224,7 +247,7 @@ echo "VPN SUCESSO!"
                    <p className="text-slate-400 text-sm">Acesse sua VPS (SSH), vire root (<code>sudo -i</code>) e cole:</p>
                    <textarea readOnly value={oracleScript} className="w-full h-32 bg-black text-purple-400 text-xs font-mono p-4 rounded border border-slate-700 resize-none" onClick={e=>e.target.select()}></textarea>
                    <div className="bg-yellow-900/20 p-2 rounded border border-yellow-500/30 text-xs text-yellow-200 mt-2">
-                      <strong>Importante:</strong> Após rodar, vá no painel da Oracle (VCN Security List) e adicione Ingress Rule para <strong>UDP 51820</strong>.
+                      <strong>Importante:</strong> Após rodar, copie a chave mostrada na tela preta.
                    </div>
                  </>
                )}
@@ -237,15 +260,17 @@ echo "VPN SUCESSO!"
 
           {step === 3 && (
             <div className="space-y-4">
-              {mode === 'direct' && (
-                <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg mb-4">
+              <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg mb-4">
                   <h4 className="text-blue-300 font-bold text-sm mb-2 flex gap-2"><Icon name="key"/> Validação de Chave (Obrigatório)</h4>
-                  <p className="text-slate-400 text-xs mb-3">Olhe no seu WireGuard Windows. Em "Interface", copie o código <strong>Public key</strong> e cole abaixo:</p>
-                  <input value={manualPubKey} onChange={e=>setManualPubKey(e.target.value)} placeholder="Cole a Public Key do Windows aqui..." className="w-full bg-black border border-blue-500/50 rounded p-3 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-              )}
+                  <p className="text-slate-400 text-xs mb-3">
+                    {mode === 'direct' 
+                      ? 'No Windows (Interface), copie a Public Key e cole abaixo:' 
+                      : 'Na tela preta da Oracle (SSH), copie a chave que apareceu no final e cole abaixo:'}
+                  </p>
+                  <input value={manualPubKey} onChange={e=>setManualPubKey(e.target.value)} placeholder="Cole a Public Key aqui..." className="w-full bg-black border border-blue-500/50 rounded p-3 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
               
-              {(mode === 'cloud' || (mode === 'direct' && manualPubKey.length > 10)) ? (
+              {manualPubKey.length > 10 ? (
                 <div className="text-center">
                   <p className="text-slate-400 text-sm mb-4">Escaneie com o Celular:</p>
                   <QRCodeDisplay value={mobConf} />
@@ -259,7 +284,7 @@ echo "VPN SUCESSO!"
 
               <div className="flex justify-between mt-6">
                 <button onClick={()=>setStep(2)} className="text-slate-400">Voltar</button>
-                <button onClick={()=>onFinish({id:Date.now(), name:mode==='direct'?'Casa':'VPS', ip, mode})} disabled={mode==='direct'&&manualPubKey.length<10} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto disabled:opacity-50"><Icon name="check"/> Salvar</button>
+                <button onClick={()=>onFinish({id:Date.now(), name:mode==='direct'?'Casa':'VPS', ip, mode})} disabled={manualPubKey.length<10} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto disabled:opacity-50"><Icon name="check"/> Salvar</button>
               </div>
             </div>
           )}
