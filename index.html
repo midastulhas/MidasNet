@@ -3,15 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manus.ai - Manager</title>
+  <title>Manus.ai - Manager (Gold)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Carregando React e Babel em modo Global para funcionar em Celulares e file:// -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <!-- QR Code Library compatível -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,7 +38,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- ICONES SVG ---
+    // --- ICONS ---
     const Icon = ({ name, size = 20, className = "" }) => {
       const icons = {
         shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
@@ -56,123 +53,81 @@
         lock: <path d="M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a7 7 0 0 0-14 0v2" />,
         cloud: <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />,
         help: <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 17h.01M12 14v-2a2 2 0 0 1 2-2 2 2 0 0 0-2-2" />,
-        warning: <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01" />
+        warning: <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01" />,
+        check: <path d="M20 6L9 17l-5-5" />
       };
-      
-      return (
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          width={size} 
-          height={size} 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          className={className}
-        >
-          {icons[name] || <circle cx="12" cy="12" r="10" />}
-        </svg>
-      );
+      return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
     };
 
-    // --- COMPONENTE QR CODE ---
     const QRCodeDisplay = ({ value }) => {
       const qrRef = useRef(null);
       useEffect(() => {
         if (qrRef.current) {
           qrRef.current.innerHTML = "";
-          try {
-            new QRCode(qrRef.current, {
-              text: value,
-              width: 180,
-              height: 180,
-              colorDark : "#000000",
-              colorLight : "#ffffff",
-              correctLevel : QRCode.CorrectLevel.M
-            });
-          } catch(e) {}
+          try { new QRCode(qrRef.current, { text: value, width: 180, height: 180, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M }); } catch(e) {}
         }
       }, [value]);
-      return <div className="bg-white p-4 rounded shadow-lg mx-auto" ref={qrRef}></div>;
+      return <div className="bg-white p-4 rounded shadow-lg mx-auto w-fit" ref={qrRef}></div>;
     };
 
     // --- LOGIC ---
     const MASTER_KEY = "manus-admin-2024";
     const SALT = "manus_secret_salt_v1";
 
-    const generateLicense = (c, d) => {
-      const e = new Date(); e.setDate(e.getDate() + parseInt(d));
-      const p = { c, e: e.getTime(), s: btoa(c + e.getTime() + SALT) };
-      return btoa(JSON.stringify(p));
-    };
-
+    const generateLicense = (c, d) => { const e = new Date(); e.setDate(e.getDate() + parseInt(d)); const p = { c, e: e.getTime(), s: btoa(c + e.getTime() + SALT) }; return btoa(JSON.stringify(p)); };
     const validateLicense = (k) => {
-      if (!k) return null;
-      if (k === MASTER_KEY) return { type: 'admin', name: 'Administrador' };
-      try {
-        const p = JSON.parse(atob(k));
-        if (p.s !== btoa(p.c + p.e + SALT)) return null;
-        if (Date.now() > p.e) return { type: 'expired', name: p.c };
-        return { type: 'client', name: p.c, expires: p.e };
-      } catch { return null; }
+      if (!k) return null; if (k === MASTER_KEY) return { type: 'admin', name: 'Admin' };
+      try { const p = JSON.parse(atob(k)); if (p.s !== btoa(p.c + p.e + SALT) || Date.now() > p.e) return null; return { type: 'client', name: p.c }; } catch { return null; }
     };
-
-    const generateWGKey = () => {
-      const b = new Uint8Array(32); window.crypto.getRandomValues(b);
-      return btoa(String.fromCharCode(...b));
-    };
-
-    const getPublicIP = async () => {
-      try { return (await (await fetch('https://api.ipify.org?format=json')).json()).ip; } 
-      catch { return 'SEU_IP_AQUI'; }
-    };
-
-    const STORAGE_KEY = 'manus_agents_v2';
-    const getAgents = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    const saveAgent = (a) => {
-      const list = getAgents();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...list.filter(x => x.id !== a.id), a]));
-    };
-    const deleteAgent = (id) => localStorage.setItem(STORAGE_KEY, JSON.stringify(getAgents().filter(a => a.id !== id)));
+    const generateWGKey = () => { const b = new Uint8Array(32); window.crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)); };
+    const getPublicIP = async () => { try { return (await (await fetch('https://api.ipify.org?format=json')).json()).ip; } catch { return 'SEU_IP_AQUI'; } };
+    const getAgents = () => JSON.parse(localStorage.getItem('manus_agents_v3') || '[]');
+    const saveAgent = (a) => { const l = getAgents(); localStorage.setItem('manus_agents_v3', JSON.stringify([...l.filter(x => x.id !== a.id), a])); };
+    const deleteAgent = (id) => localStorage.setItem('manus_agents_v3', JSON.stringify(getAgents().filter(a => a.id !== id)));
 
     // --- VIEWS ---
 
     const Troubleshooting = ({ onBack }) => (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-white flex gap-2"><Icon name="help"/> Diagnóstico de Rede</h2>
+        <h2 className="text-2xl font-bold text-white flex gap-2"><Icon name="help"/> Ajuda & Diagnóstico</h2>
         
+        <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
+           <h3 className="text-brand-400 font-bold mb-4 flex items-center gap-2"><Icon name="key" /> Entendendo as Chaves</h3>
+           <div className="flex flex-col md:flex-row gap-4 items-center justify-center bg-black/40 p-4 rounded-lg">
+              <div className="text-center">
+                 <div className="text-white font-bold mb-2">Windows (Casa)</div>
+                 <div className="text-xs text-slate-400">Public Key: <span className="text-green-400">AAA...</span></div>
+                 <div className="text-xs text-slate-400">Peer Key: <span className="text-blue-400">BBB...</span></div>
+              </div>
+              <div className="text-slate-500 font-bold">X (Cruzado)</div>
+              <div className="text-center">
+                 <div className="text-white font-bold mb-2">Celular (Rua)</div>
+                 <div className="text-xs text-slate-400">Public Key: <span className="text-blue-400">BBB...</span></div>
+                 <div className="text-xs text-slate-400">Peer Key: <span className="text-green-400">AAA...</span></div>
+              </div>
+           </div>
+           <p className="text-xs text-slate-400 mt-4 text-center">A chave de um deve estar na seção "Peer" do outro. Se estiverem iguais na mesma seção, não funciona.</p>
+        </div>
+
         <div className="grid gap-6 md:grid-cols-2">
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-brand-400 font-bold mb-2">Problema: Log Vazio no PC</h3>
-            <p className="text-sm text-slate-300 mb-4">
-              Se o celular tenta conectar mas o log do Windows não mostra NADA (nem erro), o sinal está parando no roteador.
-            </p>
-            <div className="bg-black/30 p-4 rounded text-xs text-slate-400 font-mono mb-4">
-              Causa Provável: O IP Local do PC mudou (ex: de 192.168.0.15 para .18)
-            </div>
-            <ul className="text-sm text-white list-disc pl-4 space-y-2">
-              <li>Abra o CMD e digite <code>ipconfig</code></li>
-              <li>Veja o IPv4 atual.</li>
-              <li>Vá no Roteador e atualize a regra da porta 51820 para este novo IP.</li>
+            <h3 className="text-red-400 font-bold mb-2">Log Vazio (Silêncio)</h3>
+            <p className="text-sm text-slate-300 mb-2">Se você conecta no celular e o log do Windows não mostra NADA:</p>
+            <ul className="text-sm text-white list-disc pl-4 space-y-1">
+               <li>O Windows Firewall pode estar bloqueando (Marque "Privado" na rede).</li>
+               <li><strong>Principal:</strong> O IP do seu PC mudou. Abra o CMD, digite <code>ipconfig</code> e atualize a regra no Roteador.</li>
             </ul>
           </div>
-
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-purple-400 font-bold mb-2">Problema: Invalid MAC (Chaves Erradas)</h3>
-            <p className="text-sm text-slate-300 mb-4">
-              Se o log mostra "Invalid MAC of handshake", o celular está tentando entrar com uma chave velha.
-            </p>
-            <ul className="text-sm text-white list-disc pl-4 space-y-2">
-              <li>Apague o túnel no Windows e no Celular.</li>
-              <li>Crie uma nova conexão SEM fechar ou atualizar a página entre os passos.</li>
-              <li>O "Public Key" do servidor DEVE ser igual no PC e no Celular.</li>
+            <h3 className="text-yellow-400 font-bold mb-2">Invalid MAC</h3>
+            <p className="text-sm text-slate-300 mb-2">Significa que o sinal chega, mas a chave está errada.</p>
+            <ul className="text-sm text-white list-disc pl-4 space-y-1">
+               <li>Apague tudo e crie de novo.</li>
+               <li>Use o novo sistema de <strong>"Copiar Public Key"</strong> no passo 3 para garantir que está certa.</li>
             </ul>
           </div>
         </div>
-
-        <button onClick={onBack} className="text-slate-400 hover:text-white">Voltar ao Dashboard</button>
+        <button onClick={onBack} className="text-slate-400 hover:text-white">Voltar</button>
       </div>
     );
 
@@ -181,37 +136,33 @@
       const [step, setStep] = useState(1);
       const [ip, setIp] = useState('');
       const [keys, setKeys] = useState({});
+      const [manualPubKey, setManualPubKey] = useState(''); // CRITICAL FIX: Manual Entry
       
       useEffect(() => {
-        setKeys({ sk: generateWGKey(), pk: generateWGKey(), ck: generateWGKey(), cpk: generateWGKey() });
+        setKeys({ sk: generateWGKey(), pk: generateWGKey(), ck: generateWGKey() }); // Removed serverPubKey generation, user must provide it
         if(mode==='direct') getPublicIP().then(setIp); else setIp('');
       }, [mode]);
 
-      const winConf = `[Interface]\nPrivateKey = ${keys.sk}\nAddress = 10.10.0.1/24\nListenPort = 51820\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = ${keys.cpk}\nAllowedIPs = 10.10.0.2/32`.trim();
-      const oraConf = `#!/bin/bash\napt update && apt install -y wireguard\necho "net.ipv4.ip_forward=1" >> /etc/sysctl.conf\nsysctl -p\ncat > /etc/wireguard/wg0.conf <<EOF\n[Interface]\nPrivateKey = ${keys.sk}\nAddress = 10.10.0.1/24\nListenPort = 51820\nPostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $(ip route show default | awk '/default/ {print $5}') -j MASQUERADE\nPostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $(ip route show default | awk '/default/ {print $5}') -j MASQUERADE\n[Peer]\nPublicKey = ${keys.cpk}\nAllowedIPs = 10.10.0.2/32\nEOF\nsystemctl enable wg-quick@wg0\nsystemctl start wg-quick@wg0`.trim();
-      const mobConf = `[Interface]\nPrivateKey = ${keys.ck}\nAddress = 10.10.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = ${keys.pk}\nEndpoint = ${ip}:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25`.trim();
+      // CONFIGS
+      const winConf = `[Interface]\nPrivateKey = ${keys.sk}\nAddress = 10.10.0.1/24\nListenPort = 51820\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = ${keys.pk}\nAllowedIPs = 10.10.0.2/32`.trim();
+      
+      // Mobile config now uses manualPubKey if direct mode, or auto generated key if cloud mode (simpler flow for cloud)
+      const targetPubKey = mode === 'direct' ? manualPubKey : keys.cpk; 
+      const mobConf = `[Interface]\nPrivateKey = ${keys.ck}\nAddress = 10.10.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = ${targetPubKey}\nEndpoint = ${ip}:51820\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25`.trim();
 
       return (
         <div className="bg-dark-900 border border-slate-700 rounded-xl overflow-hidden p-6">
           <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <h2 className="font-bold text-white text-xl">Nova Conexão</h2>
-            <div className="flex gap-2 text-sm">
-              <button onClick={()=>setMode('direct')} className={`px-3 py-1 rounded ${mode==='direct'?'bg-brand-600 text-white':'bg-slate-800 text-slate-400'}`}>Direto</button>
-              <button onClick={()=>setMode('cloud')} className={`px-3 py-1 rounded ${mode==='cloud'?'bg-purple-600 text-white':'bg-slate-800 text-slate-400'}`}>Nuvem</button>
+            <div className="flex gap-2 text-xs">
+               <button onClick={()=>setMode('direct')} className={`px-3 py-1 rounded ${mode==='direct'?'bg-brand-600 text-white':'bg-slate-800 text-slate-400'}`}>Direto</button>
+               <button onClick={()=>setMode('cloud')} className={`px-3 py-1 rounded ${mode==='cloud'?'bg-purple-600 text-white':'bg-slate-800 text-slate-400'}`}>Nuvem</button>
             </div>
-          </div>
-
-          <div className="mb-4 bg-orange-900/20 p-3 rounded border border-orange-500/30 flex gap-2 items-start">
-             <div className="text-orange-500 mt-1"><Icon name="warning" size={16}/></div>
-             <p className="text-xs text-orange-200"><strong>Atenção:</strong> NÃO atualize a página ou feche esta janela até terminar o Passo 3. Se fizer isso, as chaves mudam e a conexão falha.</p>
           </div>
 
           {step === 1 && (
             <div className="space-y-4">
-               <div className="bg-blue-900/20 p-4 rounded border border-blue-500/30 text-sm text-blue-200">
-                  {mode === 'direct' ? 'Este modo exige abrir a porta 51820 UDP no seu roteador para o IP LOCAL do seu PC.' : 'Este modo exige uma VM Oracle Cloud Always Free.'}
-               </div>
-               <label className="block text-sm text-slate-400">IP Público / Servidor</label>
+               <p className="text-slate-400 text-sm">{mode==='direct'?'Detectamos seu IP. Garanta que a porta 51820 UDP está aberta no Roteador.':'Cole o IP da sua VM Oracle Cloud.'}</p>
                <input value={ip} onChange={e=>setIp(e.target.value)} className="w-full bg-black border border-slate-600 rounded p-2 text-white font-mono" />
                <div className="flex justify-end gap-2 mt-4">
                  <button onClick={onCancel} className="text-slate-400 px-4">Cancelar</button>
@@ -222,10 +173,8 @@
 
           {step === 2 && (
              <div className="space-y-4">
-               <p className="text-slate-400 text-sm">
-                 {mode === 'direct' ? 'Cole no WireGuard Windows (Add Empty Tunnel):' : 'Rode no terminal da Oracle (SSH):'}
-               </p>
-               <textarea readOnly value={mode==='direct'?winConf:oraConf} className="w-full h-40 bg-black text-green-400 text-xs font-mono p-4 rounded border border-slate-700 outline-none resize-none" onClick={e=>e.target.select()}></textarea>
+               <p className="text-slate-400 text-sm">Cole no WireGuard Windows e clique em <strong>Save</strong> e <strong>Activate</strong>.</p>
+               <textarea readOnly value={winConf} className="w-full h-32 bg-black text-green-400 text-xs font-mono p-4 rounded border border-slate-700 resize-none" onClick={e=>e.target.select()}></textarea>
                <div className="flex justify-between mt-4">
                  <button onClick={()=>setStep(1)} className="text-slate-400">Voltar</button>
                  <button onClick={()=>setStep(3)} className="bg-brand-600 text-white px-6 py-2 rounded">Próximo</button>
@@ -234,22 +183,34 @@
           )}
 
           {step === 3 && (
-            <div className="space-y-4 text-center">
-              <p className="text-slate-400 text-sm mb-4">Escaneie com o app WireGuard no celular:</p>
-              <QRCodeDisplay value={mobConf} />
-              
-              <div className="bg-dark-900 border border-slate-700 p-4 rounded-lg mt-4 text-left">
-                 <h4 className="text-slate-300 text-xs font-bold uppercase mb-2">Verificação de Segurança (Obrigatório)</h4>
-                 <p className="text-slate-400 text-xs mb-2">Confira se a chave "Peer Public Key" no celular é igual a esta:</p>
-                 <div className="bg-black/50 p-2 rounded border border-brand-500/50 font-mono text-brand-400 text-xs break-all">
-                    {keys.pk}
-                 </div>
-                 <p className="text-orange-500 text-xs mt-2">Se for diferente, comece do zero sem atualizar a página.</p>
+            <div className="space-y-4">
+              <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg">
+                 <h4 className="text-blue-300 font-bold text-sm mb-2 flex gap-2"><Icon name="key"/> Validação de Chave (Obrigatório)</h4>
+                 <p className="text-slate-400 text-xs mb-3">Olhe no seu WireGuard Windows. Em "Interface", copie o código <strong>Public key</strong> e cole abaixo:</p>
+                 <input 
+                    value={manualPubKey} 
+                    onChange={e=>setManualPubKey(e.target.value)} 
+                    placeholder="Cole a Public Key do Windows aqui..."
+                    className="w-full bg-black border border-blue-500/50 rounded p-3 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                 />
               </div>
-
-              <div className="flex justify-between mt-8">
+              <div className="flex justify-between mt-4">
                  <button onClick={()=>setStep(2)} className="text-slate-400">Voltar</button>
-                 <button onClick={()=>onFinish({id:Date.now(), name:mode==='direct'?'Casa':'Cloud', ip, mode})} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto"><Icon name="shield"/> Salvar</button>
+                 <button onClick={()=>setStep(4)} disabled={!manualPubKey || manualPubKey.length < 10} className="bg-brand-600 text-white px-6 py-2 rounded disabled:opacity-50">Gerar QR Code</button>
+               </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4 text-center">
+               <p className="text-slate-400 text-sm">Escaneie agora com o Celular:</p>
+               <QRCodeDisplay value={mobConf} />
+               <div className="bg-dark-900 border border-slate-700 p-3 rounded mt-4 text-left text-xs text-slate-400">
+                  <strong>Teste Final:</strong> Desligue o Wi-Fi e teste no 4G. Se o log do Windows mostrar atividade, está pronto!
+               </div>
+               <div className="flex justify-between mt-6">
+                 <button onClick={()=>setStep(3)} className="text-slate-400">Voltar</button>
+                 <button onClick={()=>onFinish({id:Date.now(), name:'Casa', ip, mode})} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto"><Icon name="check"/> Salvar</button>
                </div>
             </div>
           )}
@@ -259,8 +220,7 @@
 
     const Dashboard = ({ user, onLogout }) => {
       const [agents, setAgents] = useState(getAgents());
-      const [view, setView] = useState('list'); // list, create, help
-
+      const [view, setView] = useState('list');
       return (
         <div className="flex min-h-screen">
           <aside className="w-64 bg-dark-900 border-r border-slate-700 hidden md:flex flex-col p-4">
@@ -271,44 +231,28 @@
             </nav>
             <button onClick={onLogout} className="flex gap-3 text-red-400 px-4 py-2 hover:bg-red-900/20 rounded"><Icon name="logout"/> Sair</button>
           </aside>
-
           <main className="flex-1 p-8 overflow-y-auto">
             {view === 'help' && <Troubleshooting onBack={()=>setView('list')} />}
-            
-            {view === 'create' && (
-              <AgentWizard onCancel={()=>setView('list')} onFinish={(a)=>{ saveAgent(a); setAgents(getAgents()); setView('list'); }} />
-            )}
-
+            {view === 'create' && <AgentWizard onCancel={()=>setView('list')} onFinish={(a)=>{ saveAgent(a); setAgents(getAgents()); setView('list'); }} />}
             {view === 'list' && (
               <>
                 <header className="flex justify-between items-center mb-8">
                   <h1 className="text-2xl font-bold text-white">Olá, {user.name}</h1>
                   <button onClick={()=>setView('create')} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded flex gap-2"><Icon name="plus"/> Nova Conexão</button>
                 </header>
-                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-dark-900 p-6 rounded-xl border border-slate-700">
-                    <p className="text-slate-400 text-xs uppercase font-bold">Ativos</p>
-                    <p className="text-3xl text-white font-bold">{agents.length}</p>
-                  </div>
+                  <div className="bg-dark-900 p-6 rounded-xl border border-slate-700"><p className="text-slate-400 text-xs uppercase font-bold">Ativos</p><p className="text-3xl text-white font-bold">{agents.length}</p></div>
                 </div>
-
                 <div className="space-y-4">
                   {agents.map(a => (
                     <div key={a.id} className="bg-dark-900 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
                        <div className="flex gap-4 items-center">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${a.mode==='cloud'?'bg-purple-900/30 text-purple-400':'bg-brand-900/30 text-brand-400'}`}>
-                            <Icon name={a.mode==='cloud'?'cloud':'server'} />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-white">{a.name}</h3>
-                            <p className="text-xs text-slate-500 font-mono">{a.ip}</p>
-                          </div>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-brand-900/30 text-brand-400`}><Icon name="server" /></div>
+                          <div><h3 className="font-bold text-white">{a.name}</h3><p className="text-xs text-slate-500 font-mono">{a.ip}</p></div>
                        </div>
                        <button onClick={()=>{if(confirm('Apagar?')) {deleteAgent(a.id); setAgents(getAgents());}}} className="text-slate-600 hover:text-red-400"><Icon name="trash"/></button>
                     </div>
                   ))}
-                  {agents.length === 0 && <p className="text-slate-500 text-center py-8">Nenhuma conexão criada.</p>}
                 </div>
               </>
             )}
@@ -318,16 +262,15 @@
     };
 
     const Login = ({ onLogin }) => {
-      const [k, setK] = useState('');
-      const [err, setErr] = useState('');
+      const [k, setK] = useState(''); const [e, setE] = useState('');
       return (
         <div className="min-h-screen bg-dark-800 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-dark-900 border border-slate-700 p-8 rounded-2xl">
              <div className="flex justify-center mb-6"><div className="w-16 h-16 bg-brand-600 rounded-2xl flex items-center justify-center"><Icon name="shield" size={40} className="text-white"/></div></div>
              <h1 className="text-2xl font-bold text-center text-white mb-6">Acesso Manus.ai</h1>
              <input className="w-full bg-black border border-slate-600 rounded p-3 text-white text-center mb-4 outline-none focus:border-brand-500" placeholder="Chave de Licença" value={k} onChange={e=>setK(e.target.value)} />
-             {err && <p className="text-red-400 text-sm text-center mb-4">{err}</p>}
-             <button onClick={()=>{ const r=validateLicense(k.trim()); if(r && r.type!=='expired') onLogin(r); else setErr('Chave inválida'); }} className="w-full bg-brand-600 text-white font-bold py-3 rounded">Entrar</button>
+             {e && <p className="text-red-400 text-sm text-center mb-4">{e}</p>}
+             <button onClick={()=>{ const r=validateLicense(k.trim()); if(r && r.type!=='expired') onLogin(r); else setE('Chave inválida'); }} className="w-full bg-brand-600 text-white font-bold py-3 rounded">Entrar</button>
           </div>
         </div>
       );
@@ -336,17 +279,9 @@
     const LicenseGen = () => {
       const [n, setN] = useState(''); const [d, setD] = useState(30); const [k, setK] = useState('');
       return (
-        <div className="min-h-screen bg-dark-800 p-8">
-           <div className="max-w-xl mx-auto space-y-4">
-             <h1 className="text-white font-bold text-2xl mb-4">Gerador Admin</h1>
-             <input className="w-full bg-black border border-slate-700 rounded p-2 text-white" placeholder="Nome Cliente" value={n} onChange={e=>setN(e.target.value)} />
-             <input type="number" className="w-full bg-black border border-slate-700 rounded p-2 text-white" value={d} onChange={e=>setD(e.target.value)} />
-             <button onClick={()=>setK(generateLicense(n,d))} className="w-full bg-green-600 text-white font-bold py-2 rounded">Gerar</button>
-             {k && <textarea readOnly className="w-full h-24 bg-black text-slate-300 text-xs p-2 rounded border border-brand-500" value={k} onClick={e=>e.target.select()} />}
-           </div>
-        </div>
+        <div className="min-h-screen bg-dark-800 p-8"><div className="max-w-xl mx-auto space-y-4"><h1 className="text-white font-bold text-2xl mb-4">Gerador Admin</h1><input className="w-full bg-black border border-slate-700 rounded p-2 text-white" placeholder="Nome" value={n} onChange={e=>setN(e.target.value)} /><input type="number" className="w-full bg-black border border-slate-700 rounded p-2 text-white" value={d} onChange={e=>setD(e.target.value)} /><button onClick={()=>setK(generateLicense(n,d))} className="w-full bg-green-600 text-white font-bold py-2 rounded">Gerar</button>{k && <textarea readOnly className="w-full h-24 bg-black text-slate-300 text-xs p-2 rounded border border-brand-500" value={k} onClick={e=>e.target.select()} />}</div></div>
       );
-    }
+    };
 
     const App = () => {
       const [u, setU] = useState(null);
