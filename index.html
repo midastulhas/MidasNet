@@ -167,19 +167,21 @@
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - AUTO SETUP (UBUNTU)
+# MANUS.AI - AUTO SETUP (FAIL-SAFE SUDO)
 # -----------------------------------------------
-apt update && apt install -y wireguard iptables-persistent
 
-# Detect Default Interface (Robust Method)
+# Force SUDO on all critical commands
+sudo apt update && sudo apt install -y wireguard iptables-persistent
+
+# Detect Interface (Robust)
 DEFAULT_IF=$(ip route show default | awk '/default/ {print $5}')
 
-# Habilitar Forwarding
-sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-sysctl -p
+# IP Forwarding
+sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+sudo sysctl -p
 
-# Configurar WireGuard
-cat > /etc/wireguard/wg0.conf <<EOF
+# Config File (using sudo bash -c to handle redirect)
+sudo bash -c "cat > /etc/wireguard/wg0.conf <<EOF
 [Interface]
 PrivateKey = ${keys.sk}
 Address = 10.10.0.1/24
@@ -191,27 +193,27 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 # Mobile
 PublicKey = ${keys.pk}
 AllowedIPs = 10.10.0.2/32
-EOF
+EOF"
 
-# Liberar Firewall Local (UFW) se existir
+# Firewall
 if command -v ufw > /dev/null; then
-  ufw allow 51820/udp
-  ufw allow OpenSSH
+  sudo ufw allow 51820/udp
+  sudo ufw allow OpenSSH
 fi
 
-# Salvar regras
-iptables -I INPUT -p udp --dport 51820 -j ACCEPT
-netfilter-persistent save
+sudo iptables -I INPUT -p udp --dport 51820 -j ACCEPT
+sudo netfilter-persistent save
 
-systemctl enable wg-quick@wg0
-systemctl restart wg-quick@wg0
+# Start Service
+sudo systemctl enable wg-quick@wg0
+sudo systemctl restart wg-quick@wg0
 
-# CALCULAR E EXIBIR A CHAVE PÚBLICA REAL
-SERVER_PUB_KEY=$(echo "${keys.sk}" | wg pubkey)
+# Calculate Key
+SERVER_PUB_KEY=$(echo "${keys.sk}" | sudo wg pubkey)
 
 echo ""
 echo "========================================================"
-echo "✅ INSTALAÇÃO CONCLUÍDA NA NUVEM!"
+echo "✅ INSTALAÇÃO CONCLUÍDA (COM SUDO)!"
 echo "========================================================"
 echo "COPIE A CHAVE ABAIXO E COLE NO APP MANUS:"
 echo ""
@@ -260,7 +262,7 @@ echo "========================================================"
                  </>
                ) : (
                  <>
-                   <p className="text-slate-400 text-sm">Acesse sua VPS (SSH), vire root (<code>sudo -i</code>) e cole:</p>
+                   <p className="text-slate-400 text-sm">Acesse sua VPS (SSH) e cole este comando (ele usa SUDO automático):</p>
                    <textarea readOnly value={oracleScript} className="w-full h-32 bg-black text-purple-400 text-xs font-mono p-4 rounded border border-slate-700 resize-none" onClick={e=>e.target.select()}></textarea>
                    <div className="bg-yellow-900/20 p-2 rounded border border-yellow-500/30 text-xs text-yellow-200 mt-2">
                       <strong>Importante:</strong> Ao final da instalação, <strong>copie a chave que aparecerá na tela preta</strong>.
