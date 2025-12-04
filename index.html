@@ -55,7 +55,8 @@
         logout: <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />,
         lock: <path d="M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a7 7 0 0 0-14 0v2" />,
         cloud: <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />,
-        help: <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 17h.01M12 14v-2a2 2 0 0 1 2-2 2 2 0 0 0-2-2" />
+        help: <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 17h.01M12 14v-2a2 2 0 0 1 2-2 2 2 0 0 0-2-2" />,
+        warning: <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01" />
       };
       
       return (
@@ -159,14 +160,14 @@
           </div>
 
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-purple-400 font-bold mb-2">Alternativa: Nuvem (Oracle)</h3>
+            <h3 className="text-purple-400 font-bold mb-2">Problema: Invalid MAC (Chaves Erradas)</h3>
             <p className="text-sm text-slate-300 mb-4">
-              Se o problema de IP Local/Roteador for muito difícil, use o modo Nuvem.
+              Se o log mostra "Invalid MAC of handshake", o celular está tentando entrar com uma chave velha.
             </p>
             <ul className="text-sm text-white list-disc pl-4 space-y-2">
-              <li>Crie uma nova conexão no botão "+".</li>
-              <li>Escolha a aba <strong>Oracle (Nuvem)</strong>.</li>
-              <li>Isso elimina a necessidade de abrir portas no roteador.</li>
+              <li>Apague o túnel no Windows e no Celular.</li>
+              <li>Crie uma nova conexão SEM fechar ou atualizar a página entre os passos.</li>
+              <li>O "Public Key" do servidor DEVE ser igual no PC e no Celular.</li>
             </ul>
           </div>
         </div>
@@ -200,6 +201,11 @@
             </div>
           </div>
 
+          <div className="mb-4 bg-orange-900/20 p-3 rounded border border-orange-500/30 flex gap-2 items-start">
+             <div className="text-orange-500 mt-1"><Icon name="warning" size={16}/></div>
+             <p className="text-xs text-orange-200"><strong>Atenção:</strong> NÃO atualize a página ou feche esta janela até terminar o Passo 3. Se fizer isso, as chaves mudam e a conexão falha.</p>
+          </div>
+
           {step === 1 && (
             <div className="space-y-4">
                <div className="bg-blue-900/20 p-4 rounded border border-blue-500/30 text-sm text-blue-200">
@@ -231,6 +237,11 @@
             <div className="space-y-4 text-center">
               <p className="text-slate-400 text-sm mb-4">Escaneie com o app WireGuard no celular:</p>
               <QRCodeDisplay value={mobConf} />
+              
+              <div className="bg-black/30 p-2 rounded text-xs text-slate-400 mt-4">
+                 Chave do Servidor (Verifique no PC): <span className="text-orange-400 font-mono">{keys.pk ? keys.pk.substring(0,10) : ''}...</span>
+              </div>
+
               <div className="flex justify-between mt-8">
                  <button onClick={()=>setStep(2)} className="text-slate-400">Voltar</button>
                  <button onClick={()=>onFinish({id:Date.now(), name:mode==='direct'?'Casa':'Cloud', ip, mode})} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto"><Icon name="shield"/> Salvar</button>
