@@ -238,8 +238,13 @@
               <p className="text-slate-400 text-sm mb-4">Escaneie com o app WireGuard no celular:</p>
               <QRCodeDisplay value={mobConf} />
               
-              <div className="bg-black/30 p-2 rounded text-xs text-slate-400 mt-4">
-                 Chave do Servidor (Verifique no PC): <span className="text-orange-400 font-mono">{keys.pk ? keys.pk.substring(0,10) : ''}...</span>
+              <div className="bg-dark-900 border border-slate-700 p-4 rounded-lg mt-4 text-left">
+                 <h4 className="text-slate-300 text-xs font-bold uppercase mb-2">Verificação de Segurança (Obrigatório)</h4>
+                 <p className="text-slate-400 text-xs mb-2">Confira se a chave "Peer Public Key" no celular é igual a esta:</p>
+                 <div className="bg-black/50 p-2 rounded border border-brand-500/50 font-mono text-brand-400 text-xs break-all">
+                    {keys.pk}
+                 </div>
+                 <p className="text-orange-500 text-xs mt-2">Se for diferente, comece do zero sem atualizar a página.</p>
               </div>
 
               <div className="flex justify-between mt-8">
