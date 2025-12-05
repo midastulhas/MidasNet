@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manus.ai - Manager (v1.0)</title>
+  <title>MidasNet - Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -97,12 +97,9 @@
         
         <div className="grid gap-6 md:grid-cols-2">
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-green-400 font-bold mb-2">Status da Rede</h3>
+            <h3 className="text-green-400 font-bold mb-2">Sinal Chegando (TCPDUMP)</h3>
             <p className="text-sm text-slate-300 mb-2">Se o teste tcpdump mostrou linhas chegando, o Firewall está OK.</p>
-            <div className="bg-green-900/20 p-3 rounded border border-green-500/30 text-xs text-green-200">
-              <strong>Rede: OK ✅</strong><br/>
-              Seu servidor está recebendo e respondendo pacotes.
-            </div>
+            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Use o novo script Platinum e cole o resultado no App.</p>
           </div>
           
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
@@ -135,7 +132,7 @@
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - PLATINUM SETUP (SERVER KEYS + MTU)
+# MIDASNET - PLATINUM SETUP (SERVER KEYS)
 # -----------------------------------------------
 set -e
 
@@ -323,9 +320,9 @@ PersistentKeepalive = 25`
       return (
         <div className="flex min-h-screen">
           <aside className="w-64 bg-dark-900 border-r border-slate-700 hidden md:flex flex-col p-4">
-            <div className="flex items-center gap-2 text-white font-bold text-xl mb-8"><div className="bg-brand-600 p-1 rounded"><Icon name="shield" className="text-white"/></div> Manus.ai</div>
+            <div className="flex items-center gap-2 text-white font-bold text-xl mb-8"><div className="bg-brand-600 p-1 rounded"><Icon name="shield" className="text-white"/></div> MidasNet</div>
             <nav className="space-y-2 flex-1">
-              <div onClick={()=>setView('list')} className={`flex gap-3 px-4 py-2 rounded cursor-pointer ${view==='list'?'bg-brand-900/30 text-brand-400':'text-slate-400'}`}><Icon name="dashboard"/> Dashboard</div>
+              <div onClick={()=>setView('list')} className={`flex gap-3 px-4 py-2 rounded cursor-pointer ${view==='list'?'bg-brand-900/30 text-brand-400':'text-slate-400'}`}><Icon name="dashboard"/> Painel</div>
               <div onClick={()=>setView('help')} className={`flex gap-3 px-4 py-2 rounded cursor-pointer ${view==='help'?'bg-brand-900/30 text-brand-400':'text-slate-400'}`}><Icon name="help"/> Ajuda / Erros</div>
             </nav>
             <button onClick={onLogout} className="flex gap-3 text-red-400 px-4 py-2 hover:bg-red-900/20 rounded"><Icon name="logout"/> Sair</button>
@@ -336,11 +333,11 @@ PersistentKeepalive = 25`
             {view === 'list' && (
               <>
                 <header className="flex justify-between items-center mb-8">
-                  <h1 className="text-2xl font-bold text-white">Olá, {user.name}</h1>
+                  <h1 className="text-2xl font-bold text-white">Painel de Controle</h1>
                   <button onClick={()=>setView('create')} className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded flex gap-2"><Icon name="plus"/> Nova Conexão</button>
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="bg-dark-900 p-6 rounded-xl border border-slate-700"><p className="text-slate-400 text-xs uppercase font-bold">Ativos</p><p className="text-3xl text-white font-bold">{agents.length}</p></div>
+                  <div className="bg-dark-900 p-6 rounded-xl border border-slate-700"><p className="text-slate-400 text-xs uppercase font-bold">Conexões Ativas</p><p className="text-3xl text-white font-bold">{agents.length}</p></div>
                 </div>
                 <div className="space-y-4">
                   {agents.map(a => (
@@ -366,7 +363,7 @@ PersistentKeepalive = 25`
         <div className="min-h-screen bg-dark-800 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-dark-900 border border-slate-700 p-8 rounded-2xl">
              <div className="flex justify-center mb-6"><div className="w-16 h-16 bg-brand-600 rounded-2xl flex items-center justify-center"><Icon name="shield" size={40} className="text-white"/></div></div>
-             <h1 className="text-2xl font-bold text-center text-white mb-6">Acesso Manus.ai</h1>
+             <h1 className="text-2xl font-bold text-center text-white mb-6">Acesso MidasNet</h1>
              <input className="w-full bg-black border border-slate-600 rounded p-3 text-white text-center mb-4 outline-none focus:border-brand-500" placeholder="Chave de Licença" value={k} onChange={e=>setK(e.target.value)} />
              {e && <p className="text-red-400 text-sm text-center mb-4">{e}</p>}
              <button onClick={()=>{ const r=validateLicense(k.trim()); if(r && r.type!=='expired') onLogin(r); else setE('Chave inválida'); }} className="w-full bg-brand-600 text-white font-bold py-3 rounded">Entrar</button>
@@ -378,7 +375,7 @@ PersistentKeepalive = 25`
     const LicenseGen = () => {
       const [n, setN] = useState(''); const [d, setD] = useState(30); const [k, setK] = useState('');
       return (
-        <div className="min-h-screen bg-dark-800 p-8"><div className="max-w-xl mx-auto space-y-4"><h1 className="text-white font-bold text-2xl mb-4">Gerador Admin</h1><input className="w-full bg-black border border-slate-700 rounded p-2 text-white" placeholder="Nome" value={n} onChange={e=>setN(e.target.value)} /><input type="number" className="w-full bg-black border border-slate-700 rounded p-2 text-white" value={d} onChange={e=>setD(e.target.value)} /><button onClick={()=>setK(generateLicense(n,d))} className="w-full bg-green-600 text-white font-bold py-2 rounded">Gerar</button>{k && <textarea readOnly className="w-full h-24 bg-black text-slate-300 text-xs p-2 rounded border border-brand-500" value={k} onClick={e=>e.target.select()} />}</div></div>
+        <div className="min-h-screen bg-dark-800 p-8"><div className="max-w-xl mx-auto space-y-4"><h1 className="text-white font-bold text-2xl mb-4">Gerador de Licenças (Admin)</h1><div className="bg-dark-900 p-6 rounded-xl border border-slate-700"><div className="grid gap-4 mb-4"><div><label className="text-slate-400 text-sm">Nome do Cliente</label><input className="w-full bg-black border border-slate-600 rounded p-2 text-white" value={n} onChange={e=>setN(e.target.value)} /></div><div><label className="text-slate-400 text-sm">Validade (Dias)</label><input type="number" className="w-full bg-black border border-slate-600 rounded p-2 text-white" value={d} onChange={e=>setD(e.target.value)} /></div></div><button onClick={()=>setK(generateLicense(n,d))} className="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-500">Gerar Chave</button>{k && <div className="mt-4 bg-black p-4 rounded border border-brand-500/50"><p className="text-brand-500 text-xs font-bold mb-2 uppercase">Copie e envie para o cliente:</p><textarea readOnly className="w-full h-24 bg-transparent text-slate-300 text-xs font-mono resize-none outline-none" value={k} onClick={e=>e.target.select()} /></div>}</div></div></div>
       );
     };
 
