@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manus.ai - Manager (Platinum) — FIXED</title>
+  <title>Manus.ai - Manager (Platinum)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -38,7 +38,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- ICONS (unchanged) ---
+    // --- ICONS ---
     const Icon = ({ name, size = 20, className = "" }) => {
       const icons = {
         shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
@@ -58,6 +58,7 @@
         shieldAlert: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
         card: <path d="M21 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM2 10h20M7 15h4" />,
         terminal: <path d="M4 17l6-6-6-6M12 19h8" />,
+        // FIX: Usando <g> para agrupar ao inves de fragmento <>
         fileWarning: <g><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M12 9v4"/><path d="M12 17h.01"/></g>
       };
       return <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{icons[name] || <circle cx="12" cy="12" r="10" />}</svg>;
@@ -66,16 +67,9 @@
     const QRCodeDisplay = ({ value }) => {
       const qrRef = useRef(null);
       useEffect(() => {
-        if (qrRef.current) {
+        if (qrRef.current && value) {
           qrRef.current.innerHTML = "";
-          if (value) {
-            try {
-              // ensure value is string
-              new QRCode(qrRef.current, { text: String(value), width: 180, height: 180, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M });
-            } catch(e) {
-              // silent
-            }
-          }
+          try { new QRCode(qrRef.current, { text: value, width: 180, height: 180, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M }); } catch(e) {}
         }
       }, [value]);
       return <div className="bg-white p-4 rounded shadow-lg mx-auto w-fit" ref={qrRef}></div>;
@@ -90,61 +84,25 @@
       if (!k) return null; if (k === MASTER_KEY) return { type: 'admin', name: 'Admin' };
       try { const p = JSON.parse(atob(k)); if (p.s !== btoa(p.c + p.e + SALT) || Date.now() > p.e) return null; return { type: 'client', name: p.c }; } catch { return null; }
     };
-    const generateWGKey = () => { const b = new Uint8Array(32); window.crypto.getRandomValues(b); // base64
-      let s = '';
-      for (let i=0;i<b.length;i++) s += String.fromCharCode(b[i]);
-      return btoa(s);
-    };
+    const generateWGKey = () => { const b = new Uint8Array(32); window.crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)); };
     const getPublicIP = async () => { try { return (await (await fetch('https://api.ipify.org?format=json')).json()).ip; } catch { return 'SEU_IP_AQUI'; } };
     const getAgents = () => JSON.parse(localStorage.getItem('manus_agents_v3') || '[]');
     const saveAgent = (a) => { const l = getAgents(); localStorage.setItem('manus_agents_v3', JSON.stringify([...l.filter(x => x.id !== a.id), a])); };
     const deleteAgent = (id) => localStorage.setItem('manus_agents_v3', JSON.stringify(getAgents().filter(a => a.id !== id)));
-
-    // --- Helpers to extract keys/config ---
-    const extractBase64Key = (text) => {
-      if (!text) return '';
-      // find longest base64-ish token (contains +/ and = padding)
-      const tokens = text.split(/\s+/).map(t => t.trim()).filter(Boolean);
-      let candidate = '';
-      const base64re = /^[A-Za-z0-9+/=]+$/;
-      for (const t of tokens) {
-        if (base64re.test(t) && t.length >= 32 && t.length <= 100) {
-          if (t.length > candidate.length) candidate = t;
-        }
-      }
-      return candidate;
-    };
-
-    const parseWGConf = (confText) => {
-      // returns { interface, peer }
-      const lines = (confText||'').split(/\r?\n/).map(l=>l.trim());
-      const out = { interface: {}, peer: {} };
-      let section = null;
-      for (const line of lines) {
-        if (!line) continue;
-        if (line.startsWith('[')) { section = line.toLowerCase(); continue; }
-        if (!section) continue;
-        const idx = line.indexOf('=');
-        if (idx === -1) continue;
-        const key = line.substring(0,idx).trim();
-        const val = line.substring(idx+1).trim();
-        if (section === '[interface]') out.interface[key] = val;
-        if (section === '[peer]') out.peer[key] = val;
-      }
-      return out;
-    };
 
     // --- VIEWS ---
 
     const Troubleshooting = ({ onBack }) => (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-white flex gap-2"><Icon name="help"/> Ajuda & Diagnóstico</h2>
+        
         <div className="grid gap-6 md:grid-cols-2">
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
             <h3 className="text-green-400 font-bold mb-2">Sinal Chegando (TCPDUMP)</h3>
             <p className="text-sm text-slate-300 mb-2">Se o teste tcpdump mostrou linhas chegando, o Firewall está OK.</p>
-            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Rode o novo script Platinum e cole o resultado no App.</p>
+            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Use o novo script Platinum e cole o resultado no App.</p>
           </div>
+          
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
             <h3 className="text-purple-400 font-bold mb-2">Comandos Úteis (SSH)</h3>
             <div className="bg-black/40 p-4 rounded border border-slate-600 mb-4">
@@ -173,58 +131,100 @@
 
       const winConf = `[Interface]\nPrivateKey = ${keys.sk}\nAddress = 10.10.0.1/24\nListenPort = 51820\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = ${keys.pk}\nAllowedIPs = 10.10.0.2/32`.trim();
       
-      const oracleScript = `#!/bin/bash\n# -----------------------------------------------\n# MANUS.AI - PLATINUM SETUP (SERVER-SIDE KEYS)\n# -----------------------------------------------\nset -e\n\necho "--> Instalando..."\nsudo apt update -y > /dev/null 2>&1\nsudo apt install -y wireguard iptables-persistent > /dev/null 2>&1\n\necho "--> Gerando chaves criptograficas no servidor..."\nSERVER_PRIV=$(wg genkey)\nSERVER_PUB=$(echo \"$SERVER_PRIV\" | wg pubkey)\nCLIENT_PRIV=$(wg genkey)\nCLIENT_PUB=$(echo \"$CLIENT_PRIV\" | wg pubkey)\n\nsudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf\nsudo sysctl -p > /dev/null 2>&1\n\necho "--> Configurando servidor..."\nsudo tee /etc/wireguard/wg0.conf > /dev/null <<EOF\n[Interface]\nPrivateKey = $SERVER_PRIV\nAddress = 10.10.0.1/24\nListenPort = 51820\nPostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -s 10.10.0.0/24 -j MASQUERADE\nPostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -s 10.10.0.0/24 -j MASQUERADE\n\n[Peer]\n# Mobile Client\nPublicKey = $CLIENT_PUB\nAllowedIPs = 10.10.0.2/32\nEOF\n\nif command -v ufw > /dev/null; then\n  sudo ufw allow 51820/udp > /dev/null 2>&1\n  sudo ufw allow OpenSSH > /dev/null 2>&1\nfi\nsudo iptables -I INPUT -p udp --dport 51820 -j ACCEPT\nsudo netfilter-persistent save > /dev/null 2>&1\n\nsudo systemctl disable wg-quick@wg0 2>/dev/null || true\nsudo systemctl stop wg-quick@wg0 2>/dev/null || true\nsudo systemctl enable wg-quick@wg0\nsudo systemctl restart wg-quick@wg0\n\n# Check external IP\nEXT_IP=$(curl -s ifconfig.me)\n\necho ""\necho "========================================================"\necho "✅ SUCESSO! COPIE O CODIGO ABAIXO E COLE NO APP:"\necho "========================================================"\necho ""\necho "[Interface]"\necho "PrivateKey = $CLIENT_PRIV"\necho "Address = 10.10.0.2/32"\necho "DNS = 1.1.1.1"\necho ""\necho "[Peer]"\necho "PublicKey = $SERVER_PUB"\necho "Endpoint = $EXT_IP:51820"\necho "AllowedIPs = 0.0.0.0/0"\necho "PersistentKeepalive = 25"\necho ""\necho "========================================================"\n`.trim();
+      const oracleScript = `#!/bin/bash
+# -----------------------------------------------
+# MANUS.AI - PLATINUM SETUP (SERVER KEYS)
+# -----------------------------------------------
+set -e
+
+echo "--> Instalando..."
+sudo apt update -y > /dev/null 2>&1
+sudo apt install -y wireguard iptables-persistent > /dev/null 2>&1
+
+echo "--> Gerando chaves..."
+SERVER_PRIV=$(wg genkey)
+SERVER_PUB=$(echo "$SERVER_PRIV" | wg pubkey)
+CLIENT_PRIV=$(wg genkey)
+CLIENT_PUB=$(echo "$CLIENT_PRIV" | wg pubkey)
+
+sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+sudo sysctl -p > /dev/null 2>&1
+
+echo "--> Configurando servidor..."
+sudo tee /etc/wireguard/wg0.conf > /dev/null <<EOF
+[Interface]
+PrivateKey = $SERVER_PRIV
+Address = 10.10.0.1/24
+ListenPort = 51820
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -s 10.10.0.0/24 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -s 10.10.0.0/24 -j MASQUERADE
+
+[Peer]
+# Mobile Client
+PublicKey = $CLIENT_PUB
+AllowedIPs = 10.10.0.2/32
+EOF
+
+if command -v ufw > /dev/null; then
+  sudo ufw allow 51820/udp > /dev/null 2>&1
+  sudo ufw allow OpenSSH > /dev/null 2>&1
+fi
+sudo iptables -I INPUT -p udp --dport 51820 -j ACCEPT
+sudo netfilter-persistent save > /dev/null 2>&1
+
+sudo systemctl disable wg-quick@wg0 2>/dev/null || true
+sudo systemctl stop wg-quick@wg0 2>/dev/null || true
+sudo systemctl enable wg-quick@wg0
+sudo systemctl restart wg-quick@wg0
+
+# Check external IP
+EXT_IP=$(curl -s ifconfig.me)
+
+echo ""
+echo "========================================================"
+echo "✅ SUCESSO! COPIE O CODIGO ABAIXO E COLE NO APP:"
+echo "========================================================"
+echo ""
+echo "[Interface]"
+echo "PrivateKey = $CLIENT_PRIV"
+echo "Address = 10.10.0.2/32"
+echo "DNS = 1.1.1.1"
+echo ""
+echo "[Peer]"
+echo "PublicKey = $SERVER_PUB"
+echo "Endpoint = $EXT_IP:51820"
+echo "AllowedIPs = 0.0.0.0/0"
+echo "PersistentKeepalive = 25"
+echo ""
+echo "========================================================"
+`.trim();
 
       // Auto-clean logic: If user pastes "SUCCESS..." junk, we strip it.
-      // Only take text starting from [Interface]
       const cleanConfig = manualConfig.includes('[Interface]') 
         ? manualConfig.substring(manualConfig.indexOf('[Interface]')).trim()
         : manualConfig;
 
-      // Build mobileConfig correctly depending on mode
-      const buildMobileConfig = () => {
-        if (mode === 'direct') {
-          // Expect user to paste only the server PUBLIC KEY (or a blob that contains it)
-          const pub = extractBase64Key(manualConfig) || '';
-          return `[Interface]\nPrivateKey = ${keys.ck}\nAddress = 10.10.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = ${pub}\nEndpoint = ${ip}:${51820}\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25`.trim();
-        } else {
-          // Cloud/VPS mode: user will paste the full conf output from the script
-          // If they pasted the whole config, use it as-is (cleaned). If they pasted raw keys, try to build config
-          const parsed = parseWGConf(cleanConfig);
-          if (parsed.peer && parsed.peer.publickey && parsed.peer.endpoint) {
-            // If the pasted content already looks like a mobile config, return it
-            return cleanConfig;
-          }
-          // Try to extract server public key and endpoint
-          const pub = extractBase64Key(cleanConfig);
-          // try to find an IP:PORT (endpoint) pattern
-          const epMatch = cleanConfig.match(/(\d{1,3}(?:\.\d{1,3}){3}:\d{1,5})/);
-          const endpoint = epMatch ? epMatch[1] : (ip ? `${ip}:${51820}` : 'SEU_IP_AQUI:51820');
-          if (pub) {
-            return `[Interface]\nPrivateKey = ${keys.ck}\nAddress = 10.10.0.2/32\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = ${pub}\nEndpoint = ${endpoint}\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25`.trim();
-          }
-          // fallback to the cleaned config
-          return cleanConfig;
-        }
-      };
+      const mobileConfig = mode === 'direct' 
+        ? `[Interface]
+PrivateKey = ${keys.ck}
+Address = 10.10.0.2/32
+DNS = 1.1.1.1
 
-      const mobileConfig = buildMobileConfig();
+[Peer]
+# Home PC
+PublicKey = ${manualConfig}
+Endpoint = ${ip}:${51820}
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25`
+        : cleanConfig;
 
       const handleFinish = () => {
-        const newAgent = {
-          id: crypto.randomUUID(),
+        onFinish({
+          id: Date.now(),
           name: mode==='direct'?'Casa':'VPS',
           ip: ip,
-          port: 51820,
-          publicKey: 'Managed',
-          privateKey: 'Managed',
-          status: 'ONLINE',
-          lastSeen: new Date().toISOString(),
-          dataTransferred: '0 MB',
           mode: mode
-        };
-        // call the proper prop
-        if (typeof onFinish === 'function') onFinish(newAgent);
+        });
       };
 
       return (
@@ -258,6 +258,7 @@
                ) : (
                  <>
                    <p className="text-slate-400 text-sm">Acesse sua VPS (SSH) e cole este comando (Gera chaves reais):</p>
+                   
                    <div className="bg-yellow-900/20 p-3 rounded border border-yellow-500/30 text-xs mb-3 text-yellow-200">
                       <p className="font-bold mb-1 flex gap-2"><Icon name="terminal"/> ATENÇÃO: ONDE COLAR?</p>
                       <ul className="list-disc pl-4 space-y-1">
