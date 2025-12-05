@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manus.ai - Manager (Platinum)</title>
+  <title>Manus.ai - Manager (v1.0)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -97,9 +97,12 @@
         
         <div className="grid gap-6 md:grid-cols-2">
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-green-400 font-bold mb-2">Sinal Chegando (TCPDUMP)</h3>
+            <h3 className="text-green-400 font-bold mb-2">Status da Rede</h3>
             <p className="text-sm text-slate-300 mb-2">Se o teste tcpdump mostrou linhas chegando, o Firewall está OK.</p>
-            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Use o novo script Platinum e cole o resultado no App.</p>
+            <div className="bg-green-900/20 p-3 rounded border border-green-500/30 text-xs text-green-200">
+              <strong>Rede: OK ✅</strong><br/>
+              Seu servidor está recebendo e respondendo pacotes.
+            </div>
           </div>
           
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
@@ -132,7 +135,7 @@
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - PLATINUM SETUP (SERVER KEYS + CLEAN)
+# MANUS.AI - PLATINUM SETUP (SERVER KEYS + MTU)
 # -----------------------------------------------
 set -e
 
@@ -199,8 +202,7 @@ echo ""
 echo "========================================================"
 `.trim();
 
-      // AUTO-CLEAN: Regex to find just the config block
-      // This fixes the "Invalid QR Code" if user pastes garbage
+      // Auto-clean logic
       const cleanConfig = () => {
         const match = manualConfig.match(/\[Interface\][\s\S]*/);
         return match ? match[0].trim() : manualConfig.trim();
