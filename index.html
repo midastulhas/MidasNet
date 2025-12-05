@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -102,12 +103,15 @@
             
             <div className="bg-red-900/20 p-4 rounded border border-red-500/30 mb-4">
                <h4 className="text-red-200 font-bold text-sm mb-2 flex items-center gap-2"><Icon name="shieldAlert" size={16}/> Oracle Firewall (VCN)</h4>
-               <p className="text-xs text-red-100 mb-2">Este é o erro mais comum. Verifique sua Security List:</p>
-               <ul className="list-disc pl-4 text-xs text-red-100 space-y-1">
-                 <li>Protocol: <strong>UDP</strong> (Nao TCP!)</li>
-                 <li>Port: <strong>51820</strong></li>
-                 <li>Source: <strong>0.0.0.0/0</strong></li>
-               </ul>
+               <p className="text-xs text-red-100 mb-2">Vá na <strong>Subnet Pública</strong> -> Security List e adicione:</p>
+               <div className="bg-black/20 p-2 rounded text-xs text-red-100">
+                 <strong>Regra de Entrada (Ingress):</strong>
+                 <ul className="list-disc pl-4 mt-1 space-y-1">
+                   <li>Source CIDR: <strong>0.0.0.0/0</strong></li>
+                   <li>IP Protocol: <strong>UDP</strong> (Não TCP!)</li>
+                   <li>Dest Port: <strong>51820</strong></li>
+                 </ul>
+               </div>
             </div>
             
              <div className="bg-blue-900/20 p-4 rounded border border-blue-500/30">
@@ -117,19 +121,36 @@
           </div>
           
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-purple-400 font-bold mb-2">Comando de Resgate</h3>
+            <h3 className="text-purple-400 font-bold mb-2">Diagnóstico SSH</h3>
             <p className="text-sm text-slate-300 mb-4">
-              Se o servidor travar ou você perder a chave, rode isto na tela preta (SSH):
+              Se o Firewall está certo e ainda não conecta:
             </p>
             
             <div className="bg-black/40 p-4 rounded border border-slate-600 mb-4">
-               <code className="block bg-black p-2 rounded text-green-400 text-[10px] font-mono select-all mb-3 whitespace-pre-wrap">
+               <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">
+                 <Icon name="terminal" size={16} /> Comandos (Tela Preta)
+               </h4>
+               
+               <div className="bg-yellow-900/20 p-2 rounded mb-3 border border-yellow-500/20">
+                 <p className="text-[10px] text-yellow-200 flex gap-2">
+                   <Icon name="warning" size={12} className="shrink-0 mt-0.5"/>
+                   <span><strong>Erro "Sudo desabilitado"?</strong><br/>Você está no Windows. Reconecte o SSH primeiro!</span>
+                 </p>
+               </div>
+
+               <p className="text-xs text-slate-400 mb-2">1. Verificar Status (Vivo?):</p>
+               <code className="block bg-black p-2 rounded text-green-400 text-xs font-mono select-all mb-3">sudo wg show</code>
+
+               <p className="text-xs text-slate-400 mb-2">2. Escutar Sinal Chegando (Teste Real):</p>
+               <code className="block bg-black p-2 rounded text-blue-400 text-xs font-mono select-all mb-3">sudo tcpdump -i any udp port 51820</code>
+               <p className="text-[10px] text-slate-500 mb-3">Rode isso e tente conectar no celular. Se aparecer texto, o firewall está OK.</p>
+
+               <p className="text-xs text-slate-400 mb-1">3. Comando de Reparo (Copie e Cole):</p>
+               <code className="block bg-black p-2 rounded text-yellow-400 text-[10px] font-mono select-all whitespace-pre-wrap">
 sudo systemctl stop wg-quick@wg0
 sudo sed -i 's/-jMASQUERADE/ -j MASQUERADE/g' /etc/wireguard/wg0.conf
 sudo systemctl start wg-quick@wg0
-sudo wg show wg0 public-key
                </code>
-               <p className="text-[10px] text-slate-400">Isso conserta o arquivo e mostra a chave real.</p>
             </div>
           </div>
         </div>
@@ -155,25 +176,26 @@ sudo wg show wg0 public-key
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - AUTO SETUP (GENERIC IP NAT V5)
+# MANUS.AI - AUTO SETUP (GENERIC NAT V5)
 # -----------------------------------------------
 set -e
 
-# Force SUDO
+# 1. Instalar e Atualizar (Force SUDO)
 sudo apt update -y && sudo apt install -y wireguard iptables-persistent
 
-# 1. Enable IP Forwarding
+# 2. IP Forwarding
 sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 sudo sysctl -p
 
-# 2. Create Config (Source Based NAT - No Interface Name Needed)
+# 3. Configuração Blindada (Source NAT)
+# Remove a necessidade de detectar interface (eth0/enp0s3)
 echo "--> Criando arquivo de configuracao..."
 sudo tee /etc/wireguard/wg0.conf > /dev/null <<EOF
 [Interface]
 PrivateKey = ${keys.sk}
 Address = 10.10.0.1/24
 ListenPort = 51820
-# Regra Generica: Mascarar tudo que vem da VPN (10.10.0.x)
+# Mascarar tudo vindo da VPN (10.10.0.x) independente da placa de rede
 PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -s 10.10.0.0/24 -j MASQUERADE
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -s 10.10.0.0/24 -j MASQUERADE
 
@@ -183,7 +205,7 @@ PublicKey = ${keys.pk}
 AllowedIPs = 10.10.0.2/32
 EOF
 
-# 3. Firewall
+# 4. Firewall Interno
 if command -v ufw > /dev/null; then
   sudo ufw allow 51820/udp
   sudo ufw allow OpenSSH
@@ -192,18 +214,19 @@ fi
 sudo iptables -I INPUT -p udp --dport 51820 -j ACCEPT
 sudo netfilter-persistent save
 
-# 4. Restart Service
+# 5. Restart Limpo
+echo "--> Reiniciando servicos..."
 sudo systemctl disable wg-quick@wg0 2>/dev/null || true
 sudo systemctl stop wg-quick@wg0 2>/dev/null || true
 sudo systemctl enable wg-quick@wg0
 sudo systemctl restart wg-quick@wg0
 
-# 5. Key
+# 6. Exibir Chave
 SERVER_PUB_KEY=$(echo "${keys.sk}" | sudo wg pubkey)
 
 echo ""
 echo "========================================================"
-echo "✅ INSTALAÇÃO CONCLUÍDA!"
+echo "✅ INSTALAÇÃO CONCLUÍDA COM SUCESSO!"
 echo "========================================================"
 echo "COPIE A CHAVE ABAIXO E COLE NO APP MANUS:"
 echo ""
