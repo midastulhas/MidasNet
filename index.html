@@ -38,7 +38,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- ICONS (Fixed <g> tags) ---
+    // --- ICONS ---
     const Icon = ({ name, size = 20, className = "" }) => {
       const icons = {
         shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
@@ -46,7 +46,7 @@
         dashboard: <path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z" />,
         server: <path d="M2 12h20M2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6M2 12V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6" />,
         plus: <path d="M12 5v14M5 12h14" />,
-        trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,
+        trash: <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2" />,
         copy: <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M16 4h2a2 2 0 0 1 2 2v4M21 14H11" />,
         refresh: <path d="M23 4v6h-6M1 20v-6h6" />,
         logout: <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />,
@@ -99,7 +99,7 @@
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
             <h3 className="text-green-400 font-bold mb-2">Sinal Chegando (TCPDUMP)</h3>
             <p className="text-sm text-slate-300 mb-2">Se o teste tcpdump mostrou linhas chegando, o Firewall está OK.</p>
-            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Rode o novo script Platinum e cole o resultado no App.</p>
+            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Use o novo script Platinum e cole o resultado no App.</p>
           </div>
           
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
@@ -120,8 +120,7 @@
       const [mode, setMode] = useState('direct');
       const [step, setStep] = useState(1);
       const [ip, setIp] = useState('');
-      // Inicializa com strings vazias para evitar undefined
-      const [keys, setKeys] = useState({ sk: '', pk: '', ck: '', cpk: '' });
+      const [keys, setKeys] = useState({ sk:'', pk:'', ck:'', cpk:'' });
       const [manualConfig, setManualConfig] = useState('');
       
       useEffect(() => {
@@ -133,7 +132,7 @@
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - PLATINUM SETUP (SERVER KEYS)
+# MANUS.AI - PLATINUM SETUP (SERVER KEYS + MTU FIX)
 # -----------------------------------------------
 set -e
 
@@ -188,7 +187,8 @@ echo ""
 echo "[Interface]"
 echo "PrivateKey = $CLIENT_PRIV"
 echo "Address = 10.10.0.2/32"
-echo "DNS = 1.1.1.1"
+echo "DNS = 8.8.8.8"
+echo "MTU = 1280"
 echo ""
 echo "[Peer]"
 echo "PublicKey = $SERVER_PUB"
@@ -199,10 +199,11 @@ echo ""
 echo "========================================================"
 `.trim();
 
-      // Limpeza Automatica para garantir QR Code valido
-      const cleanConfig = manualConfig.includes('[Interface]') 
-        ? manualConfig.substring(manualConfig.indexOf('[Interface]')).trim()
-        : manualConfig;
+      // Improved Clean Logic: Regex to find the [Interface] block
+      const cleanConfig = () => {
+        const match = manualConfig.match(/\[Interface\][\s\S]*/);
+        return match ? match[0].trim() : manualConfig.trim();
+      };
 
       const mobileConfig = mode === 'direct' 
         ? `[Interface]
@@ -216,7 +217,7 @@ PublicKey = ${manualConfig}
 Endpoint = ${ip}:${51820}
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25`
-        : cleanConfig;
+        : cleanConfig();
 
       const handleFinish = () => {
         const newAgent = {
@@ -291,7 +292,7 @@ PersistentKeepalive = 25`
                   <textarea value={manualConfig} onChange={e=>setManualConfig(e.target.value)} placeholder={mode==='direct' ? "Cole a Chave Publica..." : "[Interface]\nPrivateKey = ..."} className="w-full h-32 bg-black border border-blue-500/50 rounded p-3 text-white font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
               </div>
               
-              {manualConfig.length > 10 ? (
+              {cleanConfig().length > 10 ? (
                 <div className="text-center">
                   <p className="text-slate-400 text-sm mb-4">Escaneie com o Celular:</p>
                   <QRCodeDisplay value={mobileConfig} />
@@ -305,7 +306,7 @@ PersistentKeepalive = 25`
 
               <div className="flex justify-between mt-6">
                 <button onClick={()=>setStep(2)} className="text-slate-400">Voltar</button>
-                <button onClick={handleFinish} disabled={manualConfig.length<10} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto disabled:opacity-50"><Icon name="check"/> Salvar</button>
+                <button onClick={handleFinish} disabled={cleanConfig().length<10} className="bg-green-600 text-white px-6 py-2 rounded flex gap-2 mx-auto disabled:opacity-50"><Icon name="check"/> Salvar</button>
               </div>
             </div>
           )}
