@@ -132,7 +132,7 @@
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - PLATINUM SETUP (SERVER KEYS + MTU FIX)
+# MANUS.AI - PLATINUM SETUP (SERVER KEYS + CLEAN)
 # -----------------------------------------------
 set -e
 
@@ -199,7 +199,8 @@ echo ""
 echo "========================================================"
 `.trim();
 
-      // Improved Clean Logic: Regex to find the [Interface] block
+      // AUTO-CLEAN: Regex to find just the config block
+      // This fixes the "Invalid QR Code" if user pastes garbage
       const cleanConfig = () => {
         const match = manualConfig.match(/\[Interface\][\s\S]*/);
         return match ? match[0].trim() : manualConfig.trim();
