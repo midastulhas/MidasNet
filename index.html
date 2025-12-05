@@ -39,7 +39,6 @@
     const { useState, useEffect, useRef } = React;
 
     // --- ICONS ---
-    // Fixed: Replaced <> fragment with <g> group for SVGs to prevent rendering errors
     const Icon = ({ name, size = 20, className = "" }) => {
       const icons = {
         shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
@@ -84,8 +83,6 @@
       if (!k) return null; if (k === MASTER_KEY) return { type: 'admin', name: 'Admin' };
       try { const p = JSON.parse(atob(k)); if (p.s !== btoa(p.c + p.e + SALT) || Date.now() > p.e) return null; return { type: 'client', name: p.c }; } catch { return null; }
     };
-    
-    // Direct Mode Fallback Keys
     const generateWGKey = () => { const b = new Uint8Array(32); window.crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)); };
     const getPublicIP = async () => { try { return (await (await fetch('https://api.ipify.org?format=json')).json()).ip; } catch { return 'SEU_IP_AQUI'; } };
     const getAgents = () => JSON.parse(localStorage.getItem('manus_agents_v3') || '[]');
@@ -100,22 +97,19 @@
         
         <div className="grid gap-6 md:grid-cols-2">
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-green-400 font-bold mb-2">Status da Rede</h3>
-            <p className="text-sm text-slate-300 mb-2">Seu teste com tcpdump mostrou linhas chegando. Isso é excelente! Significa que o IP está certo e o Firewall da Oracle está aberto.</p>
-            <div className="bg-green-900/20 p-3 rounded border border-green-500/30 text-xs text-green-200">
-              <strong>Rede: OK ✅</strong><br/>
-              O problema agora é apenas a chave de criptografia.
-            </div>
+            <h3 className="text-green-400 font-bold mb-2">Sinal Chegando (TCPDUMP)</h3>
+            <p className="text-sm text-slate-300 mb-2">Se o teste tcpdump mostrou linhas chegando, o Firewall está OK.</p>
+            <p className="text-xs text-slate-400">O problema restante é apenas a chave ou a configuração do WireGuard. Rode o novo script Platinum e cole o resultado no App.</p>
           </div>
           
           <div className="bg-dark-900 border border-slate-700 p-6 rounded-xl">
-            <h3 className="text-purple-400 font-bold mb-2">Solução Definitiva</h3>
-            <p className="text-sm text-slate-300 mb-2">Use o <strong>Script Platinum</strong>.</p>
-            <ul className="list-disc pl-4 text-xs text-slate-400 space-y-2">
-              <li>Ele gera as chaves dentro do servidor (matematicamente perfeitas).</li>
-              <li>Ele imprime a configuração pronta.</li>
-              <li>Você só copia e cola no App para gerar o QR Code.</li>
-            </ul>
+            <h3 className="text-purple-400 font-bold mb-2">Comandos Úteis (SSH)</h3>
+            <div className="bg-black/40 p-4 rounded border border-slate-600 mb-4">
+               <p className="text-xs text-slate-400 mb-2">Ver se está rodando:</p>
+               <code className="block bg-black p-2 rounded text-green-400 text-xs font-mono select-all mb-3">sudo wg show</code>
+               <p className="text-xs text-slate-400 mb-2">Escutar a porta (Teste Final):</p>
+               <code className="block bg-black p-2 rounded text-blue-400 text-xs font-mono select-all mb-3">sudo tcpdump -i any udp port 51820</code>
+            </div>
           </div>
         </div>
         <button onClick={onBack} className="text-slate-400 hover:text-white">Voltar</button>
@@ -138,7 +132,7 @@
       
       const oracleScript = `#!/bin/bash
 # -----------------------------------------------
-# MANUS.AI - PLATINUM SETUP (SERVER KEYS)
+# MANUS.AI - PLATINUM SETUP (SERVER-SIDE KEYS)
 # -----------------------------------------------
 set -e
 
@@ -146,7 +140,7 @@ echo "--> Instalando..."
 sudo apt update -y > /dev/null 2>&1
 sudo apt install -y wireguard iptables-persistent > /dev/null 2>&1
 
-echo "--> Gerando chaves..."
+echo "--> Gerando chaves criptograficas no servidor..."
 SERVER_PRIV=$(wg genkey)
 SERVER_PUB=$(echo "$SERVER_PRIV" | wg pubkey)
 CLIENT_PRIV=$(wg genkey)
@@ -204,6 +198,12 @@ echo ""
 echo "========================================================"
 `.trim();
 
+      // Auto-clean logic: If user pastes "SUCCESS..." junk, we strip it.
+      // Only take text starting from [Interface]
+      const cleanConfig = manualConfig.includes('[Interface]') 
+        ? manualConfig.substring(manualConfig.indexOf('[Interface]')).trim()
+        : manualConfig;
+
       const mobileConfig = mode === 'direct' 
         ? `[Interface]
 PrivateKey = ${keys.ck}
@@ -216,15 +216,22 @@ PublicKey = ${manualConfig}
 Endpoint = ${ip}:${51820}
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25`
-        : manualConfig;
+        : cleanConfig; // Use the cleaned config for Cloud mode
 
       const handleFinish = () => {
-        onFinish({
-          id: Date.now(),
+        const newAgent = {
+          id: crypto.randomUUID(),
           name: mode==='direct'?'Casa':'VPS',
           ip: ip,
+          port: 51820,
+          publicKey: 'Managed',
+          privateKey: 'Managed',
+          status: 'ONLINE',
+          lastSeen: new Date().toISOString(),
+          dataTransferred: '0 MB',
           mode: mode
-        });
+        };
+        onComplete(newAgent);
       };
 
       return (
@@ -257,13 +264,13 @@ PersistentKeepalive = 25`
                  </>
                ) : (
                  <>
-                   <p className="text-slate-400 text-sm">Acesse sua VPS (SSH) e cole este comando:</p>
+                   <p className="text-slate-400 text-sm">Acesse sua VPS (SSH) e cole este comando (Gera chaves reais):</p>
                    
                    <div className="bg-yellow-900/20 p-3 rounded border border-yellow-500/30 text-xs mb-3 text-yellow-200">
                       <p className="font-bold mb-1 flex gap-2"><Icon name="terminal"/> ATENÇÃO: ONDE COLAR?</p>
                       <ul className="list-disc pl-4 space-y-1">
-                        <li><strong>Errado:</strong> <code>PS C:\Users...</code> (Isso é seu Windows)</li>
-                        <li><strong>Certo:</strong> <code>ubuntu@manus-server:~$</code> (Isso é a Oracle)</li>
+                        <li>Cole na <strong>Oracle (Tela Preta)</strong>.</li>
+                        <li>No final, ele vai te dar um código. Copie ele!</li>
                       </ul>
                    </div>
 
